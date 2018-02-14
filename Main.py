@@ -26,7 +26,6 @@ def word_count(file_name):
             words += [word for word in line_words if len(word) > 5]
             line = file.readline()
 
-    print("The list of words is: ", words)
     counter = Counter(words)
     return counter.most_common(5)
 
@@ -64,31 +63,18 @@ def login(driver):
 
     username.send_keys(getuser())
     password.send_keys(getpass())
-
-    ##TODO actually log in (ask for username and password
-
+    # TODO actually log in (ask for username and password)
     driver.find_element_by_css_selector("button.submit.btn.primary-btn").click()
 
 
-def output(console_output, file_output):
-    pass
+def output_data(mention_list, hashtag_list, popular_words_dict):
+    print("There were %d mentions and %d hashtags" % (len(set(mention_list)), len(set(hashtag_list))))
+    print(mention_list)
+    print(hashtag_list)
+    print(popular_words_dict)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Provide data about Trump\'s tweets.')
-    parser.add_argument('integer', metavar='N', type=int,
-                        help='the number of tweets to mine for.',
-                        default=100)
-    parser.add_argument('--f', dest='file_output', action='store_true',
-                        help='output to a file')
-    parser.add_argument('--c', dest='console_output', action='store_true',
-                        help='output to the console')
-    parser.add_argument('--no-c', dest='console_output', action='store_false',
-                        help='no output to the console')
-    parser.set_defaults(console_output=True)
-    parser.set_defaults(file_output=False)
-    args = parser.parse_args()
-
     # open a chrome window and enter twitter
     url = "https://twitter.com/realDonaldTrump"
     file_name = 'tweets_file.txt'
@@ -107,13 +93,8 @@ def main():
     parse_tweet(tweets, hashtag_list, mention_list)
 
     popular_words_dict = word_count(file_name)
-    
-    output(console_output, file_output)
 
-    print("There were %d mentions and %d hashtags" % (len(set(mention_list)), len(set(hashtag_list))))
-    print(mention_list)
-    print(hashtag_list)
-    print(popular_words_dict)
+    output_data(mention_list, hashtag_list, popular_words_dict)
     # close the window
     driver.close()
 
