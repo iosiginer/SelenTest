@@ -9,9 +9,8 @@
     Written by Josef Ginerman as a homework/interview for Cellebrite.
 """
 
-import re, time, argparse
+import re, time
 from collections import Counter
-from getpass import getpass, getuser
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
@@ -27,7 +26,7 @@ def word_count(file_name):
             line = file.readline()
 
     counter = Counter(words)
-    return counter.most_common(5)
+    return dict(counter.most_common(5))
 
 
 def parse_tweet(tweets, hashtag_list, mention_list):
@@ -57,44 +56,54 @@ def get_tweets(driver, file_name, num):
     return tweets[:num]
 
 
-def login(driver):
-    username = driver.find_element_by_name("username")
-    password = driver.find_element_by_name("password")
+def output_data(mention_list, hashtag_list, popular_words, file_name, to_file):
+    mentions_and_tags = "There were %d mentions and %d hashtags" % (len(set(mention_list)), len(set(hashtag_list)))
+    mention_string = "The mentions are: " + str(mention_list)
+    hashtag_string = "The hashtags are: " + str(hashtag_list)
+    popular_words_string = "The 5 most used words are:\n"
+    popular_words_dict = (
+    [(key, popular_words[key]) for key in sorted(popular_words, key=popular_words.get, reverse=True)])
+    for word, freq in popular_words_dict:
+        popular_words_string += "\t \"" + word + "\" used " + str(freq) + " times\n"
 
-    username.send_keys(getuser())
-    password.send_keys(getpass())
-    # TODO actually log in (ask for username and password)
-    driver.find_element_by_css_selector("button.submit.btn.primary-btn").click()
+    print(mentions_and_tags)
+    print(mention_string)
+    print(hashtag_string)
+    print(popular_words_string)
 
-
-def output_data(mention_list, hashtag_list, popular_words_dict):
-    print("There were %d mentions and %d hashtags" % (len(set(mention_list)), len(set(hashtag_list))))
-    print(mention_list)
-    print(hashtag_list)
-    print(popular_words_dict)
+    if to_file:
+        with open(file_name) as file:
+            file.write(mentions_and_tags)
+            file.write(mention_string)
+            file.write(hashtag_string)
+            file.write(popular_words)
 
 
 def main():
-    # open a chrome window and enter twitter
-    url = "https://twitter.com/realDonaldTrump"
+    # set the url, the user and the file name.
+    url = "https://twitter.com/"
+    twitterUser = "realDonaldTrump"
     file_name = 'tweets_file.txt'
+    to_file = False
+    num_of_tweets = 100
 
+    # create the lists to store the data
     hashtag_list = []
     mention_list = []
 
+    # open Google Chrome on the given url and user
     driver = webdriver.Chrome()
-    driver.get(url)
-    assert 'Twitter' in driver.title
+    driver.get(url + twitterUser)
+    assert 'Twitter' in driver.title  # check if Twitter opened
 
-    # login(driver)
+    tweets = get_tweets(driver, file_name, num_of_tweets)  # get the tweets from the feed
 
-    tweets = get_tweets(driver, file_name, 100)
+    parse_tweet(tweets, hashtag_list, mention_list)  # get the data from the tweets
 
-    parse_tweet(tweets, hashtag_list, mention_list)
+    popular_words_dict = word_count(file_name)  # determine and save the most used words
 
-    popular_words_dict = word_count(file_name)
+    output_data(mention_list, hashtag_list, popular_words_dict, file_name, to_file)
 
-    output_data(mention_list, hashtag_list, popular_words_dict)
     # close the window
     driver.close()
 
