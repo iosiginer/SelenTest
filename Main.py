@@ -6,7 +6,7 @@
 
     Originally made to gather and parse Donald J. Trump's last 100 tweets.
 
-    Written by Josef Ginerman as a homework/interview for Cellebrite.
+    Written by Josef Ginerman.
 """
 
 import re, time
@@ -16,75 +16,84 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
 
-def word_count(file_name):
+def find_most_used_words(tweets):
     words = []
-    with open(file_name) as file:
-        line = file.readline()
-        while line:
-            line_words = re.split(" ", line)
-            words += [word for word in line_words if len(word) > 5]
-            line = file.readline()
+    # loop through the tweets and add the words to a list ( for the counting ).
+    for line in tweets:
+        line_words = re.split(" ", line.text)
+        words += [word for word in line_words if len(word) > 5]
 
+    # use the Counter to quickly find the most common words and their frequency.
     counter = Counter(words)
     return dict(counter.most_common(5))
 
 
-def parse_tweet(tweets, hashtag_list, mention_list):
+def find_special_items_in_tweet(tweets, hashtag_list, mention_list):  # finds hastags and mentions in the tweets
     hashtag = re.compile(r'(#[A-Za-z]+[A-Za-z0-9]+)')
     mention = re.compile(r'(@[A-Za-z]+[A-Za-z0-9]+)')
 
+    # loop one time though all the tweet's text, to find mentions and hash-tags.
     for tweet in tweets:
         tweet = tweet.text
-        print(tweet + '\n')
         hashtag_list += hashtag.findall(tweet)
         mention_list += mention.findall(tweet)
     return tweets
 
 
-def get_tweets(driver, file_name, num):
-    file = open(file_name, 'w+')
+def get_tweets_from_server(driver, num_of_tweets):
     action = ActionChains(driver)
-    action.send_keys(Keys.PAGE_DOWN * 15)
+    action.send_keys(Keys.PAGE_DOWN * 15)  # scroll down to find the desired ammount of tweets.
+    action.perform()
     tweets = []
-    while len(tweets) < num:
+    while len(tweets) < num_of_tweets:
         action.perform()
-        time.sleep(0.2)
-        tweets = driver.find_elements_by_class_name("TweetTextSize")
-    for tweet in tweets[:num]:
-        file.write(tweet.text + '\n')
+        time.sleep(0.2)  # wait for the page to fully load.
+        tweets = driver.find_elements_by_class_name("TweetTextSize")  # find the tweets by their class name.
 
-    return tweets[:num]
+    return tweets[:num_of_tweets]  # return only num ammout of tweets.
 
 
 def output_data(mention_list, hashtag_list, popular_words, file_name, to_file):
+    # create the strings
     mentions_and_tags = "There were %d mentions and %d hashtags" % (len(set(mention_list)), len(set(hashtag_list)))
-    mention_string = "The mentions are: " + str(mention_list)
-    hashtag_string = "The hashtags are: " + str(hashtag_list)
-    popular_words_string = "The 5 most used words are:\n"
-    popular_words_dict = (
-    [(key, popular_words[key]) for key in sorted(popular_words, key=popular_words.get, reverse=True)])
-    for word, freq in popular_words_dict:
-        popular_words_string += "\t \"" + word + "\" used " + str(freq) + " times\n"
+    mention_string = "\nThe mentions are: "
+    hashtag_string = "\nThe hashtags are: "
+    popular_words_string = "\nThe 5 most used words are:"
 
+    for mention in set(mention_list):
+        mention_string += "\n\t" + mention
+
+    for hash in set(hashtag_list):
+        hashtag_string += "\n\t" + hash
+
+    # sort the most popular words before outputting.
+    popular_words_dict = (
+        [(key, popular_words[key]) for key in sorted(popular_words, key=popular_words.get, reverse=True)])
+    # form a string out of the most popular words
+    for word, freq in popular_words_dict:
+        popular_words_string += "\n\t \"" + word + "\" used " + str(freq) + " times"
+
+    # print the data to the console
     print(mentions_and_tags)
     print(mention_string)
     print(hashtag_string)
     print(popular_words_string)
 
+    # write the data to a file (if the boolean is true).
     if to_file:
-        with open(file_name) as file:
-            file.write(mentions_and_tags)
-            file.write(mention_string)
-            file.write(hashtag_string)
-            file.write(popular_words)
+        file = open(file_name, "w")
+        file.write(mentions_and_tags)
+        file.write(mention_string)
+        file.write(hashtag_string)
+        file.write(popular_words_string)
 
 
 def main():
     # set the url, the user and the file name.
     url = "https://twitter.com/"
-    twitterUser = "realDonaldTrump"
+    twitter_user = "realDonaldTrump"
     file_name = 'tweets_file.txt'
-    to_file = False
+    to_file = True
     num_of_tweets = 100
 
     # create the lists to store the data
@@ -93,14 +102,14 @@ def main():
 
     # open Google Chrome on the given url and user
     driver = webdriver.Chrome()
-    driver.get(url + twitterUser)
+    driver.get(url + twitter_user)
     assert 'Twitter' in driver.title  # check if Twitter opened
 
-    tweets = get_tweets(driver, file_name, num_of_tweets)  # get the tweets from the feed
+    tweets = get_tweets_from_server(driver, num_of_tweets)  # get the tweets from the feed
 
-    parse_tweet(tweets, hashtag_list, mention_list)  # get the data from the tweets
+    find_special_items_in_tweet(tweets, hashtag_list, mention_list)  # get the data from the tweets
 
-    popular_words_dict = word_count(file_name)  # determine and save the most used words
+    popular_words_dict = find_most_used_words(tweets)  # determine and save the most used words
 
     output_data(mention_list, hashtag_list, popular_words_dict, file_name, to_file)
 
